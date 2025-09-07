@@ -1,6 +1,6 @@
 const {split, combine} = require('../');
 
-describe('shamir-secret-sharing', () => {
+describe('keysplit', () => {
   const secret = new Uint8Array([0x73, 0x65, 0x63, 0x72, 0x65, 0x74]);
 
   it('cannot split with invalid arguments', async () => {

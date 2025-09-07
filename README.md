@@ -1,103 +1,139 @@
-# shamir-secret-sharing
+# keysplit
 
-![Github CI](https://github.com/privy-io/shamir-secret-sharing/workflows/Github%20CI/badge.svg)
+Simple, zero-dependency TypeScript implementation of [Shamir's Secret Sharing](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing) by Onoal.
 
-Simple, independently audited, zero-dependency TypeScript implementation of [Shamir's Secret Sharing algorithm](https://en.wikipedia.org/wiki/Shamir%27s_Secret_Sharing).
+Uses GF(2^8) and operates on `Uint8Array`s. Inspired by [hashicorp/vault](https://github.com/hashicorp/vault/tree/main/shamir).
 
-Uses GF(2^8). Works on `Uint8Array` objects. Implementation inspired by [hashicorp/vault](https://github.com/hashicorp/vault/tree/main/shamir).
+## Install
 
-Both Node and browser environments are supported.
+```bash
+npm install keysplit
+```
 
-Made with ❤️  by [Privy](https://privy.io).
-
-## Security considerations
-
-This library has been independently audited by [Cure53](https://cure53.de) ([audit report](https://cure53.de/audit-report_privy-sss-library.pdf)) and [Zellic](https://www.zellic.io/) ([audit report](https://github.com/Zellic/publications/blob/master/Privy_Shamir_Secret_Sharing_-_Zellic_Audit_Report.pdf)).
-
-There are a couple of considerations for proper use of this library.
-
-1. Resistance to side channel attacks: JavaScript is a garbage-collected, just-in-time compiled language and it is thus unrealistic to achieve true constant-time guarantees. Where possible, we aim to achieve algorithmic constant-time.
-2. This library is not responsible for verifying the result of share reconstruction. Incorrect or corrupted shares will produce an incorrect value. Thus, it is the responsibility of users of this library to verify the integrity of the reconstructed secret.
-3. Secrets should ideally be uniformly distributed at random. If this is not the case, it is recommended to first encrypt the value and split the encryption key.
-
-## Usage
-
-We can `split` a secret into shares and later `combine` the shares to reconstruct the secret.
+## Quick start
 
 ```typescript
-import {split, combine} from 'shamir-secret-sharing';
+import {split, combine} from 'keysplit';
 
-const toUint8Array = (data: string) => new TextEncoder().encode(data);
+const encoder = new TextEncoder();
+const secret = encoder.encode('hello world');
 
-// Example of splitting user input
-const input = document.querySelector("input#secret").value.normalize('NFKC');
-const secret = toUint8Array(input);
-const [share1, share2, share3] = await split(secret, 3, 2);
-const reconstructed = await combine([share1, share3]);
-console.log(btoa(reconstructed) === btoa(secret)); // true
+const [a, b, c] = await split(secret, 3, 2);
+const reconstructed = await combine([a, c]);
 
-// Example of splitting random entropy
-const randomEntropy = crypto.getRandomValues(new Uint8Array(16));
-const [share1, share2, share3] = await split(randomEntropy, 3, 2);
-const reconstructed = await combine([share2, share3]);
-console.log(btoa(reconstructed) === btoa(randomEntropy)); // true
-
-// Example of splitting symmetric key
-const key = await crypto.subtle.generateKey(
-  {
-    name: "AES-GCM",
-    length: 256
-  },
-  true,
-  ["encrypt", "decrypt"]
-);
-const exportedKeyBuffer = await crypto.subtle.exportKey('raw', key);
-const exportedKey = new Uint8Array(exportedKeyBuffer);
-const [share1, share2, share3] = await split(exportedKey, 3, 2);
-const reconstructed = await combine([share2, share1]);
-console.log(btoa(reconstructed) === btoa(exportedKey)); // true
+console.log(Buffer.from(reconstructed).toString('hex'));
 ```
+
+### Node (CommonJS)
+
+```js
+const {split, combine} = require('keysplit');
+```
+
+### Browser
+
+- Modern browsers supported. Uses `crypto.getRandomValues` for CSPRNG.
+- Bundle with your favorite tool (Vite, Webpack, Rollup). No polyfills required.
 
 ## API
 
-This package exposes two functions: `split` and `combine`.
+This package exposes two async functions.
 
-#### split
+### split(secret, shares, threshold): Promise<Uint8Array[]>
 
 ```ts
-/**
- * Splits a `secret` into `shares` number of shares, requiring `threshold` of them to reconstruct `secret`.
- *
- * @param secret The secret value to split into shares.
- * @param shares The total number of shares to split `secret` into. Must be at least 2 and at most 255.
- * @param threshold The minimum number of shares required to reconstruct `secret`. Must be at least 2 and at most 255.
- * @returns A list of `shares` shares.
- */
-declare function split(secret: Uint8Array, shares: number, threshold: number): Promise<Uint8Array[]>;
+declare function split(
+  secret: Uint8Array,
+  shares: number,
+  threshold: number,
+): Promise<Uint8Array[]>;
 ```
 
-#### combine
+- `secret`: `Uint8Array` to split. Must be non-empty.
+- `shares`: total number of shares, 2 ≤ n ≤ 255.
+- `threshold`: minimum shares to reconstruct, 2 ≤ t ≤ 255 and t ≤ n.
+- Returns: array of `shares` `Uint8Array`s. Each share is `secret.length + 1` bytes.
+
+### combine(shares): Promise<Uint8Array>
 
 ```ts
-/**
- * Combines `shares` to reconstruct the secret.
- *
- * @param shares A list of shares to reconstruct the secret from. Must be at least 2 and at most 255.
- * @returns The reconstructed secret.
- */
 declare function combine(shares: Uint8Array[]): Promise<Uint8Array>;
 ```
-## Contributions
 
-The shamir-secret-sharing library is not currently open to external contributions.
+- `shares`: array of shares, length 2 ≤ m ≤ 255. All must be the same length, ≥ 2 bytes, and last byte of each must be unique.
+- Returns: reconstructed `Uint8Array`.
 
-Please [submit an Issue](https://github.com/privy-io/shamir-secret-sharing/issues/new) and fill
-out the issue with as much information as possible if you have found a bug in need of
-fixing.
+## Examples
 
-You can also [submit an Issue](https://github.com/privy-io/shamir-secret-sharing/issues/new) to
-request new features, or to suggest changes to existing features.
+### Split browser input
+
+```ts
+import {split, combine} from 'keysplit';
+
+const toBytes = (s: string) => new TextEncoder().encode(s);
+
+const input = (document.querySelector('input#secret') as HTMLInputElement).value.normalize('NFKC');
+const secret = toBytes(input);
+const [s1, s2, s3] = await split(secret, 3, 2);
+const back = await combine([s1, s3]);
+```
+
+### Split random entropy
+
+```ts
+const entropy = crypto.getRandomValues(new Uint8Array(16));
+const [e1, e2, e3] = await split(entropy, 3, 2);
+const back = await combine([e2, e3]);
+```
+
+### Split a symmetric key (Web Crypto)
+
+```ts
+const key = await crypto.subtle.generateKey({name: 'AES-GCM', length: 256}, true, [
+  'encrypt',
+  'decrypt',
+]);
+const buf = new Uint8Array(await crypto.subtle.exportKey('raw', key));
+const [k1, k2, k3] = await split(buf, 3, 2);
+const back = await combine([k2, k1]);
+```
+
+## Environment notes
+
+- Node: uses `node:crypto` for CSPRNG.
+- Browser: uses `window.crypto.getRandomValues`.
+- ESM and CJS builds are provided via package exports.
+
+## Security considerations
+
+The underlying approach has been independently audited in prior work (see reports below). This fork preserves the core algorithm and constraints.
+
+1. Side-channel resistance: JavaScript environments cannot guarantee true constant time. We aim for algorithmic constant time where possible.
+2. Integrity: Incorrect or corrupted shares will yield incorrect reconstruction. Verify integrity at a higher layer.
+3. Entropy: Prefer uniformly random secrets. If not, encrypt first and split the key.
+
+## Errors
+
+- `TypeError('secret must be a Uint8Array')`
+- `Error('secret cannot be empty')`
+- `TypeError('shares must be a number')`
+- `RangeError('shares must be at least 2 and at most 255')`
+- `TypeError('threshold must be a number')`
+- `RangeError('threshold must be at least 2 and at most 255')`
+- `Error('shares cannot be less than threshold')`
+- `TypeError('shares must be an Array')`
+- `TypeError('shares must have at least 2 and at most 255 elements')`
+- `TypeError('each share must be a Uint8Array')`
+- `TypeError('each share must be at least 2 bytes')`
+- `TypeError('all shares must have the same byte length')`
+- `Error('shares must contain unique values but a duplicate was found')`
+
+## Contributing
+
+Please [open an issue](https://github.com/onoal/Onoal-KeySplit/issues/new) with as much detail as possible for bugs and feature requests.
 
 ## License
 
 Apache-2.0. See the [license file](LICENSE).
+
+Made with ❤️ by Onoal.

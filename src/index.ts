@@ -1,4 +1,4 @@
-import {getRandomBytes} from 'shamir-secret-sharing/csprng';
+import {getRandomBytes} from 'keysplit/csprng';
 
 // The Polynomial used is: x⁸ + x⁴ + x³ + x + 1
 //

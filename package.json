@@ -1,5 +1,5 @@
 {
-  "name": "shamir-secret-sharing",
+  "name": "keysplit",
   "version": "0.0.4",
   "description": "Simple, independently audited, zero-dependency TypeScript implementation of Shamir's Secret Sharing algorithm",
   "keywords": [
@@ -21,40 +21,44 @@
   },
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "import": "./esm/index.js",
-      "default": "./index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "default": "./dist/cjs/index.js"
     },
     "./csprng": {
-      "types": "./csprng.d.ts",
+      "types": "./dist/csprng.d.ts",
       "node": {
-        "import": "./esm/csprng.node.js",
-        "require": "./csprng.node.js"
+        "import": "./dist/esm/csprng.node.js",
+        "require": "./dist/cjs/csprng.node.js"
       },
-      "import": "./esm/csprng.js",
-      "require": "./csprng.js"
+      "import": "./dist/esm/csprng.js",
+      "require": "./dist/cjs/csprng.js"
     }
   },
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/index.d.ts",
   "files": [
-    "/*.js",
-    "/*.js.map",
-    "/*.d.ts",
-    "esm",
-    "src"
+    "dist"
   ],
   "scripts": {
-    "clean": "rm *.{js,d.ts,js.map} esm/*.{js,d.ts,js.map} 2> /dev/null; echo clean",
+    "clean": "rm -rf dist 2> /dev/null; echo clean",
     "prebuild": "npm run clean",
-    "build": "tsc && tsc -p tsconfig.esm.json",
+    "build": "tsc && tsc -p tsconfig.esm.json && mkdir -p dist/esm && cp esm/package.json dist/esm/package.json",
     "lint": "prettier --check 'src/**/*.ts' 'test/**/*.js'",
     "pretest": "npm run build",
     "test": "jest --testMatch \"**/test/**/*.test.js\"",
     "prepublishOnly": "npm run build"
   },
-  "author": "privy.io",
+  "author": "Onoal",
+  "homepage": "https://github.com/onoal/Onoal-KeySplit#readme",
+  "bugs": {
+    "url": "https://github.com/onoal/Onoal-KeySplit/issues"
+  },
+  "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/privy-io/shamir-secret-sharing"
+    "url": "https://github.com/onoal/Onoal-KeySplit.git"
   },
   "license": "Apache-2.0",
   "devDependencies": {
